@@ -4,6 +4,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import LoginLanding from "./pages/LoginLanding";
 import LoginForm from "./components/LoginForm";
 import Layout from "./pages/Layout";
+import Dashboard from "./pages/Dashboard";
 
 const App = () => {
   return (
@@ -15,7 +16,8 @@ const App = () => {
         <Route path="/login" element={<LoginLanding />} />
 
         <Route
-          path="/login/admin" element={
+          path="/login/admin"
+          element={
             <LoginForm
               role="admin"
               title="Admin Portal"
@@ -35,12 +37,9 @@ const App = () => {
           }
         />
 
-        {/* Dashboard and application pages */}
+        {/* Application Pages */}
         <Route element={<Layout />}>
-          <Route
-            path="/dashboard"
-            element={<h1 className="text-3xl font-bold">Dashboard</h1>}
-          />
+          <Route path="/dashboard" element={<Dashboard />} />
 
           <Route
             path="/employees"
@@ -74,10 +73,16 @@ const App = () => {
         </Route>
 
         {/* Root URL → Dashboard */}
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route
+          path="/"
+          element={<Navigate to="/dashboard" replace />}
+        />
 
         {/* Unknown URL → Dashboard */}
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        <Route
+          path="*"
+          element={<Navigate to="/dashboard" replace />}
+        />
       </Routes>
     </>
   );
