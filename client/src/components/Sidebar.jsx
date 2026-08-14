@@ -32,7 +32,7 @@ const Sidebar = () => {
     setMobileOpen(false);
   }, [pathname]);
 
-  const role = dummyProfileData.role || "EMPLOYEE";
+  const role = "" || "EMPLOYEE";
 
   const navigationItems = [
     {

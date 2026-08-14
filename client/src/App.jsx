@@ -6,6 +6,7 @@ import LoginForm from "./components/LoginForm";
 import Layout from "./pages/Layout";
 import Dashboard from "./pages/Dashboard";
 import Employees from "./pages/Employees";
+import Attendance from "./pages/Attendance";
 
 const App = () => {
   return (
@@ -61,13 +62,9 @@ const App = () => {
 
           {/* Attendance */}
           <Route
-            path="/attendance"
-            element={
-              <h1 className="text-3xl font-bold">
-                Attendance
-              </h1>
-            }
-          />
+  path="/attendance"
+  element={<Attendance />}
+/>
 
           {/* Leave */}
           <Route

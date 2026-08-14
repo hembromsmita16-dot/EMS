@@ -17,7 +17,7 @@ const Employees = () => {
 
   // ================= FETCH EMPLOYEES =================
 
-  const fetchEmployees = useCallback(() => {
+  const fetchEmployees = useCallback(async () => {
     setLoading(true);
 
     const timer = setTimeout(() => {
@@ -35,7 +35,7 @@ const Employees = () => {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [selectedDept]);
 
   useEffect(() => {
     const cleanup = fetchEmployees();
