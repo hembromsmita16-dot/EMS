@@ -35,7 +35,7 @@ const Employees = () => {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [selectedDept]);
+  }, []);
 
   useEffect(() => {
     const cleanup = fetchEmployees();

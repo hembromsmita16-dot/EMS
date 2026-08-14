@@ -3,10 +3,15 @@ import { Navigate, Route, Routes } from "react-router-dom";
 
 import LoginLanding from "./pages/LoginLanding";
 import LoginForm from "./components/LoginForm";
+
 import Layout from "./pages/Layout";
 import Dashboard from "./pages/Dashboard";
 import Employees from "./pages/Employees";
 import Attendance from "./pages/Attendance";
+import Leave from "./pages/Leave";
+import Payslips from "./pages/Payslips";
+import Settings from "./pages/Settings";
+import PrintPayslip from "./pages/PrintPayslip";
 
 const App = () => {
   return (
@@ -15,7 +20,9 @@ const App = () => {
 
       <Routes>
 
-        {/* ================= LOGIN ================= */}
+        {/* =====================================================
+            LOGIN
+        ===================================================== */}
 
         <Route
           path="/login"
@@ -44,7 +51,9 @@ const App = () => {
           }
         />
 
-        {/* ================= MAIN APPLICATION ================= */}
+        {/* =====================================================
+            MAIN APPLICATION
+        ===================================================== */}
 
         <Route element={<Layout />}>
 
@@ -62,53 +71,43 @@ const App = () => {
 
           {/* Attendance */}
           <Route
-  path="/attendance"
-  element={<Attendance />}
-/>
+            path="/attendance"
+            element={<Attendance />}
+          />
 
           {/* Leave */}
           <Route
             path="/leave"
-            element={
-              <h1 className="text-3xl font-bold">
-                Leave
-              </h1>
-            }
+            element={<Leave />}
           />
 
           {/* Payslips */}
           <Route
             path="/payslips"
-            element={
-              <h1 className="text-3xl font-bold">
-                Payslips
-              </h1>
-            }
+            element={<Payslips />}
           />
 
           {/* Settings */}
           <Route
             path="/settings"
-            element={
-              <h1 className="text-3xl font-bold">
-                Settings
-              </h1>
-            }
-          />
-
-          {/* Print Payslip */}
-          <Route
-            path="/print/payslips/:id"
-            element={
-              <h1 className="text-3xl font-bold">
-                Print Payslip
-              </h1>
-            }
+            element={<Settings />}
           />
 
         </Route>
 
-        {/* ================= REDIRECTS ================= */}
+        {/* =====================================================
+            PRINT PAYSLIP
+            This is outside Layout so the payslip prints cleanly
+        ===================================================== */}
+
+        <Route
+          path="/print-payslip"
+          element={<PrintPayslip />}
+        />
+
+        {/* =====================================================
+            DEFAULT ROUTES
+        ===================================================== */}
 
         <Route
           path="/"

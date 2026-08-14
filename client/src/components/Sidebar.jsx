@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   UserIcon,
   XIcon,
@@ -32,41 +32,51 @@ const Sidebar = () => {
     setMobileOpen(false);
   }, [pathname]);
 
-  const role = "" || "EMPLOYEE";
+const role =
+  localStorage.getItem("ems_role") ||
+  "EMPLOYEE";
 
-  const navigationItems = [
-    {
-      name: "Dashboard",
-      path: "/dashboard",
-      icon: LayoutDashboardIcon,
-    },
-    {
-      name: "Employees",
-      path: "/employees",
-      icon: UsersIcon,
-    },
-    {
-      name: "Attendance",
-      path: "/attendance",
-      icon: CalendarCheckIcon,
-    },
-    {
-      name: "Leave",
-      path: "/leave",
-      icon: CalendarDaysIcon,
-    },
-    {
-      name: "Payslips",
-      path: "/payslips",
-      icon: ReceiptIcon,
-    },
-    {
-      name: "Settings",
-      path: "/settings",
-      icon: SettingsIcon,
-    },
-  ];
+ const navigationItems = [
+  {
+    name: "Dashboard",
+    path: "/dashboard",
+    icon: LayoutDashboardIcon,
+  },
 
+  ...(role === "ADMIN"
+    ? [
+        {
+          name: "Employees",
+          path: "/employees",
+          icon: UsersIcon,
+        },
+      ]
+    : []),
+
+  {
+    name: "Attendance",
+    path: "/attendance",
+    icon: CalendarCheckIcon,
+  },
+
+  {
+    name: "Leave",
+    path: "/leave",
+    icon: CalendarDaysIcon,
+  },
+
+  {
+    name: "Payslips",
+    path: "/payslips",
+    icon: ReceiptIcon,
+  },
+
+  {
+    name: "Settings",
+    path: "/settings",
+    icon: SettingsIcon,
+  },
+];
   const sidebarContent = (
     <>
       {/* Brand header */}
@@ -135,9 +145,9 @@ const Sidebar = () => {
           const isActive = pathname === item.path;
 
           return (
-            <a
+            <Link
               key={item.path}
-              href={item.path}
+              to={item.path}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition ${
                 isActive
                   ? "bg-indigo-600 text-white"
@@ -146,20 +156,25 @@ const Sidebar = () => {
             >
               <Icon size={18} />
               <span>{item.name}</span>
-            </a>
+            </Link>
           );
         })}
       </nav>
 
       {/* Logout */}
       <div className="mt-auto p-3 border-t border-white/10">
-        <a
-          href="/login"
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-400 hover:bg-white/5 hover:text-white transition"
+        <Link
+  to="/login"
+  onClick={() => {
+    localStorage.removeItem("ems_role");
+  }}
+          className="flex items-center gap-3 px-3 py-2.5 
+          rounded-lg text-sm text-slate-400 hover:bg-white/5 
+          hover:text-white transition"
         >
           <LogOutIcon size={18} />
           <span>Logout</span>
-        </a>
+        </Link>
       </div>
     </>
   );
