@@ -1,17 +1,21 @@
+import React from "react";
 import { Outlet } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 
 const Layout = () => {
   return (
-    <div className="min-h-screen flex bg-slate-50">
-      <aside className="hidden md:block w-64 bg-slate-950 text-white p-6">
-        <h2 className="text-xl font-bold">EMS</h2>
-        <p className="text-slate-400 mt-2">Employee Management</p>
-      </aside>
+    <div className="flex h-screen bg-slate-50 overflow-hidden">
+
+      {/* Sidebar */}
       <Sidebar />
-      <main className="flex-1 p-8">
-        <Outlet />
+
+      {/* Main Content */}
+      <main className="flex-1 overflow-y-auto">
+        <div className="p-6 sm:p-8 lg:p-10 max-w-[1600px] mx-auto">
+          <Outlet />
+        </div>
       </main>
+
     </div>
   );
 };

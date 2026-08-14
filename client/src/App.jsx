@@ -5,6 +5,7 @@ import LoginLanding from "./pages/LoginLanding";
 import LoginForm from "./components/LoginForm";
 import Layout from "./pages/Layout";
 import Dashboard from "./pages/Dashboard";
+import Employees from "./pages/Employees";
 
 const App = () => {
   return (
@@ -12,8 +13,13 @@ const App = () => {
       <Toaster />
 
       <Routes>
-        {/* Login */}
-        <Route path="/login" element={<LoginLanding />} />
+
+        {/* ================= LOGIN ================= */}
+
+        <Route
+          path="/login"
+          element={<LoginLanding />}
+        />
 
         <Route
           path="/login/admin"
@@ -37,52 +43,96 @@ const App = () => {
           }
         />
 
-        {/* Application Pages */}
-        <Route element={<Layout />}>
-          <Route path="/dashboard" element={<Dashboard />} />
+        {/* ================= MAIN APPLICATION ================= */}
 
+        <Route element={<Layout />}>
+
+          {/* Dashboard */}
+          <Route
+            path="/dashboard"
+            element={<Dashboard />}
+          />
+
+          {/* Employees */}
           <Route
             path="/employees"
-            element={<h1 className="text-3xl font-bold">Employees</h1>}
+            element={<Employees />}
           />
 
+          {/* Attendance */}
           <Route
             path="/attendance"
-            element={<h1 className="text-3xl font-bold">Attendance</h1>}
+            element={
+              <h1 className="text-3xl font-bold">
+                Attendance
+              </h1>
+            }
           />
 
+          {/* Leave */}
           <Route
             path="/leave"
-            element={<h1 className="text-3xl font-bold">Leave</h1>}
+            element={
+              <h1 className="text-3xl font-bold">
+                Leave
+              </h1>
+            }
           />
 
+          {/* Payslips */}
           <Route
             path="/payslips"
-            element={<h1 className="text-3xl font-bold">Payslips</h1>}
+            element={
+              <h1 className="text-3xl font-bold">
+                Payslips
+              </h1>
+            }
           />
 
+          {/* Settings */}
           <Route
             path="/settings"
-            element={<h1 className="text-3xl font-bold">Settings</h1>}
+            element={
+              <h1 className="text-3xl font-bold">
+                Settings
+              </h1>
+            }
           />
 
+          {/* Print Payslip */}
           <Route
             path="/print/payslips/:id"
-            element={<h1 className="text-3xl font-bold">Print Payslip</h1>}
+            element={
+              <h1 className="text-3xl font-bold">
+                Print Payslip
+              </h1>
+            }
           />
+
         </Route>
 
-        {/* Root URL → Dashboard */}
+        {/* ================= REDIRECTS ================= */}
+
         <Route
           path="/"
-          element={<Navigate to="/dashboard" replace />}
+          element={
+            <Navigate
+              to="/dashboard"
+              replace
+            />
+          }
         />
 
-        {/* Unknown URL → Dashboard */}
         <Route
           path="*"
-          element={<Navigate to="/dashboard" replace />}
+          element={
+            <Navigate
+              to="/dashboard"
+              replace
+            />
+          }
         />
+
       </Routes>
     </>
   );
