@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   dummyAdminDashboardData,
+  dummyEmployeeDashboardData
 } from "../assets/assets";
 
 import Loading from "../components/Loading";
@@ -12,9 +13,15 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Temporary dummy admin data
-    setData(dummyAdminDashboardData);
+    const role =
+    localStorage.getItem("ems_role") ||
+    "EMPLOYEE";
 
+  if (role === "ADMIN") {
+    setData(dummyAdminDashboardData);
+  } else {
+    setData(dummyEmployeeDashboardData);
+  }
     const timer = setTimeout(() => {
       setLoading(false);
     }, 1000);

@@ -14,7 +14,12 @@ const LoginForm = ({ role, title, subtitle }) => {
       return;
     }
 
-    navigate("/dashboard");
+    localStorage.setItem(
+  "ems_role",
+  role.toUpperCase()
+);
+
+navigate("/dashboard");
   };
 
   return (
