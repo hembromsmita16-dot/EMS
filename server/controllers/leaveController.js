@@ -81,7 +81,7 @@ try {
     })
 }
 } catch (error) {
-    return res.status(500).json({ error: "Failed" });
+     return res.status(500).json({ error: "Failed" });
 }
 }
 
