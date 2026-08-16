@@ -1,43 +1,62 @@
-import { useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
 import { useNavigate } from "react-router-dom";
-import { Plus, Download } from "lucide-react";
 
 import {
-  dummyPayslipData,
-  dummyProfileData,
-} from "../assets/assets";
+  Plus,
+  Download,
+} from "lucide-react";
+
+import toast from "react-hot-toast";
+
+import { useAuth } from "../context/AuthContext";
+import api from "../api/axios";
+
+
+// ======================================================
+// MONTH NAMES
+// ======================================================
+
+const months = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
 
 // ======================================================
 // GET PERIOD
 // ======================================================
 
 const getPeriod = (payslip) => {
-  if (payslip.month && payslip.year) {
-    const months = [
-      "January",
-      "February",
-      "March",
-      "April",
-      "May",
-      "June",
-      "July",
-      "August",
-      "September",
-      "October",
-      "November",
-      "December",
-    ];
+  const month = Number(payslip.month);
+  const year = Number(payslip.year);
 
-    const monthIndex =
-      Number(payslip.month) - 1;
-
-    return `${months[monthIndex] || ""} ${
-      payslip.year
-    }`;
+  if (
+    month >= 1 &&
+    month <= 12 &&
+    year
+  ) {
+    return `${months[month - 1]} ${year}`;
   }
 
-  return payslip.period || "—";
+  return "—";
 };
+
 
 // ======================================================
 // PAYSLIPS
@@ -46,41 +65,114 @@ const getPeriod = (payslip) => {
 const Payslips = () => {
   const navigate = useNavigate();
 
-  const role =
-    localStorage.getItem("ems_role") || "EMPLOYEE";
+  const { user } = useAuth();
 
-  const [payslips, setPayslips] = useState(
-    dummyPayslipData || []
-  );
+  const isAdmin = user?.role === "ADMIN";
 
-  const [showModal, setShowModal] =
-    useState(false);
+
+  const [payslips, setPayslips] = useState([]);
+
+  const [employees, setEmployees] = useState([]);
+
+  const [loading, setLoading] = useState(true);
+
+  const [showModal, setShowModal] = useState(false);
+
+
+  // ======================================================
+  // FORM DATA
+  // ======================================================
 
   const [formData, setFormData] = useState({
     employeeId: "",
-    period: "",
+    month: "",
+    year: "",
     basicSalary: "",
-    netSalary: "",
+    allowances: "",
+    deductions: "",
   });
+
+
+  // ======================================================
+  // FETCH PAYSLIPS
+  // ======================================================
+
+  const fetchPayslips = useCallback(async () => {
+    try {
+      setLoading(true);
+
+      const res = await api.get("/payslips");
+
+      setPayslips(res.data.data || []);
+    } catch (error) {
+      toast.error(
+        error?.response?.data?.error ||
+          error?.message ||
+          "Failed to load payslips"
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+
+  // ======================================================
+  // INITIAL LOAD
+  // ======================================================
+
+  useEffect(() => {
+    fetchPayslips();
+  }, [fetchPayslips]);
+
+
+  // ======================================================
+  // FETCH EMPLOYEES
+  // ======================================================
+
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    const fetchEmployees = async () => {
+      try {
+        const res = await api.get("/employees");
+
+        const employeeData = Array.isArray(res.data)
+          ? res.data
+          : res.data.data || [];
+
+        setEmployees(
+          employeeData.filter(
+            (employee) => !employee.isDeleted
+          )
+        );
+      } catch (error) {
+        toast.error(
+          error?.response?.data?.error ||
+            error?.message ||
+            "Failed to load employees"
+        );
+      }
+    };
+
+    fetchEmployees();
+  }, [isAdmin]);
+
 
   // ======================================================
   // FORMAT MONEY
   // ======================================================
 
   const formatMoney = (amount) => {
-    return `$${Number(
-      amount || 0
-    ).toLocaleString()}`;
+    return `$${Number(amount || 0).toLocaleString()}`;
   };
+
 
   // ======================================================
   // GET EMPLOYEE NAME
   // ======================================================
 
   const getEmployeeName = (payslip) => {
-    const employee = Array.isArray(
-      payslip.employee
-    )
+    const employee = Array.isArray(payslip.employee)
       ? payslip.employee[0]
       : payslip.employee;
 
@@ -93,20 +185,22 @@ const Payslips = () => {
     }`.trim();
   };
 
+
   // ======================================================
   // EMPLOYEE PAYSLIPS
   // ======================================================
 
   const employeePayslips = useMemo(() => {
-    return payslips.filter(
-      (payslip) =>
-        payslip.employeeId ===
-        dummyProfileData._id
-    );
-  }, [payslips]);
+    if (isAdmin) {
+      return [];
+    }
+
+    return payslips;
+  }, [payslips, isAdmin]);
+
 
   // ======================================================
-  // OPEN PRINT PAYSLIP
+  // PRINT / DOWNLOAD
   // ======================================================
 
   const handlePrintPayslip = (payslip) => {
@@ -117,71 +211,98 @@ const Payslips = () => {
     });
   };
 
+
   // ======================================================
-  // GENERATE PAYSLIP - ADMIN
+  // GENERATE PAYSLIP
   // ======================================================
 
-  const handleGeneratePayslip = (e) => {
-    e.preventDefault();
+  const handleGeneratePayslip = async (event) => {
+    event.preventDefault();
 
     if (
       !formData.employeeId ||
-      !formData.period ||
-      !formData.basicSalary ||
-      !formData.netSalary
+      !formData.month ||
+      !formData.year ||
+      !formData.basicSalary
     ) {
+      toast.error(
+        "Please fill in all required fields."
+      );
+
       return;
     }
 
-    const employee =
-      payslips.find(
-        (item) =>
-          item.employeeId ===
-          formData.employeeId
-      )?.employee || null;
 
-    const newPayslip = {
-      _id: `local-${Date.now()}`,
+    try {
+      await api.post("/payslips", {
+        employeeId: formData.employeeId,
 
-      employeeId:
-        formData.employeeId,
+        month: Number(formData.month),
 
-      period:
-        formData.period,
+        year: Number(formData.year),
 
-      basicSalary:
-        Number(formData.basicSalary),
+        basicSalary: Number(
+          formData.basicSalary
+        ),
 
-      allowances: 0,
+        allowances: Number(
+          formData.allowances || 0
+        ),
 
-      deductions: 0,
+        deductions: Number(
+          formData.deductions || 0
+        ),
+      });
 
-      netSalary:
-        Number(formData.netSalary),
 
-      employee,
-    };
+      toast.success(
+        "Payslip generated successfully."
+      );
 
-    setPayslips((current) => [
-      newPayslip,
-      ...current,
-    ]);
 
-    setFormData({
-      employeeId: "",
-      period: "",
-      basicSalary: "",
-      netSalary: "",
-    });
+      setFormData({
+        employeeId: "",
+        month: "",
+        year: "",
+        basicSalary: "",
+        allowances: "",
+        deductions: "",
+      });
 
-    setShowModal(false);
+
+      setShowModal(false);
+
+
+      await fetchPayslips();
+
+    } catch (error) {
+      toast.error(
+        error?.response?.data?.error ||
+          error?.message ||
+          "Failed to generate payslip"
+      );
+    }
   };
+
+
+  // ======================================================
+  // LOADING
+  // ======================================================
+
+  if (loading) {
+    return (
+      <div className="py-12 text-center text-slate-500">
+        Loading payslips...
+      </div>
+    );
+  }
+
 
   // ======================================================
   // ADMIN PAGE
   // ======================================================
 
-  if (role === "ADMIN") {
+  if (isAdmin) {
     return (
       <div className="animate-fade-in">
 
@@ -201,18 +322,19 @@ const Payslips = () => {
 
           </div>
 
+
           <button
             type="button"
-            onClick={() =>
-              setShowModal(true)
-            }
+            onClick={() => setShowModal(true)}
             className="btn-primary flex items-center gap-2 whitespace-nowrap"
           >
             <Plus size={18} />
+
             Generate Payslip
           </button>
 
         </div>
+
 
         {/* ADMIN TABLE */}
 
@@ -239,6 +361,14 @@ const Payslips = () => {
                   </th>
 
                   <th>
+                    Allowances
+                  </th>
+
+                  <th>
+                    Deductions
+                  </th>
+
+                  <th>
                     Net Salary
                   </th>
 
@@ -250,74 +380,106 @@ const Payslips = () => {
 
               </thead>
 
+
               <tbody>
 
                 {payslips.length > 0 ? (
 
-                  payslips.map(
-                    (payslip) => (
+                  payslips.map((payslip) => (
 
-                      <tr
-                        key={payslip._id}
-                      >
+                    <tr
+                      key={
+                        payslip._id ||
+                        payslip.id
+                      }
+                    >
 
-                        <td className="font-medium text-slate-700">
-                          {getEmployeeName(
-                            payslip
-                          )}
-                        </td>
+                      <td className="font-medium text-slate-700">
 
-                        <td className="text-slate-500">
-                          {getPeriod(
-                            payslip
-                          )}
-                        </td>
+                        {getEmployeeName(
+                          payslip
+                        )}
 
-                        <td className="text-slate-500">
-                          {formatMoney(
-                            payslip.basicSalary
-                          )}
-                        </td>
+                      </td>
 
-                        <td className="font-semibold text-slate-800">
-                          {formatMoney(
-                            payslip.netSalary
-                          )}
-                        </td>
 
-                        <td>
+                      <td className="text-slate-500">
 
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handlePrintPayslip(
-                                payslip
-                              )
-                            }
-                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 text-xs font-medium"
-                          >
+                        {getPeriod(
+                          payslip
+                        )}
 
-                            <Download
-                              size={14}
-                            />
+                      </td>
 
-                            Download
 
-                          </button>
+                      <td className="text-slate-500">
 
-                        </td>
+                        {formatMoney(
+                          payslip.basicSalary
+                        )}
 
-                      </tr>
+                      </td>
 
-                    )
-                  )
+
+                      <td className="text-slate-500">
+
+                        {formatMoney(
+                          payslip.allowances
+                        )}
+
+                      </td>
+
+
+                      <td className="text-slate-500">
+
+                        {formatMoney(
+                          payslip.deductions
+                        )}
+
+                      </td>
+
+
+                      <td className="font-semibold text-slate-800">
+
+                        {formatMoney(
+                          payslip.netSalary
+                        )}
+
+                      </td>
+
+
+                      <td>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handlePrintPayslip(
+                              payslip
+                            )
+                          }
+                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 text-xs font-medium"
+                        >
+
+                          <Download
+                            size={14}
+                          />
+
+                          Download
+
+                        </button>
+
+                      </td>
+
+                    </tr>
+
+                  ))
 
                 ) : (
 
                   <tr>
 
                     <td
-                      colSpan="5"
+                      colSpan="7"
                       className="text-center py-10 text-slate-500"
                     >
                       No payslips found.
@@ -335,6 +497,7 @@ const Payslips = () => {
 
         </div>
 
+
         {/* GENERATE MODAL */}
 
         {showModal && (
@@ -343,19 +506,36 @@ const Payslips = () => {
 
             <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl">
 
+
               {/* MODAL HEADER */}
 
-              <div className="px-6 py-5 border-b border-slate-200">
+              <div className="flex items-center justify-between px-6 py-5 border-b border-slate-200">
 
-                <h2 className="text-xl font-semibold text-slate-900">
-                  Generate Payslip
-                </h2>
+                <div>
 
-                <p className="text-sm text-slate-500 mt-1">
-                  Create a new employee payslip
-                </p>
+                  <h2 className="text-xl font-semibold text-slate-900">
+                    Generate Payslip
+                  </h2>
+
+                  <p className="text-sm text-slate-500 mt-1">
+                    Create a new employee payslip
+                  </p>
+
+                </div>
+
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShowModal(false)
+                  }
+                  className="text-slate-400 hover:text-slate-700 text-xl"
+                >
+                  ×
+                </button>
 
               </div>
+
 
               {/* FORM */}
 
@@ -366,6 +546,7 @@ const Payslips = () => {
                 className="p-6 space-y-5"
               >
 
+
                 {/* EMPLOYEE */}
 
                 <div>
@@ -374,16 +555,20 @@ const Payslips = () => {
                     Employee
                   </label>
 
+
                   <select
                     value={
                       formData.employeeId
                     }
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        employeeId:
-                          e.target.value,
-                      })
+                    onChange={(event) =>
+                      setFormData(
+                        (current) => ({
+                          ...current,
+
+                          employeeId:
+                            event.target.value,
+                        })
+                      )
                     }
                     required
                     className="w-full border border-slate-300 rounded-lg px-4 py-3"
@@ -393,33 +578,28 @@ const Payslips = () => {
                       Select Employee
                     </option>
 
-                    {[
-                      ...new Map(
-                        payslips
-                          .filter(
-                            (item) =>
-                              item.employee
-                          )
-                          .map(
-                            (item) => [
-                              item.employeeId,
-                              item.employee,
-                            ]
-                          )
-                      ).entries(),
-                    ].map(
-                      ([
-                        employeeId,
-                        employee,
-                      ]) => (
+
+                    {employees.map(
+                      (employee) => (
 
                         <option
-                          key={employeeId}
-                          value={employeeId}
+                          key={
+                            employee._id ||
+                            employee.id
+                          }
+                          value={
+                            employee._id ||
+                            employee.id
+                          }
                         >
 
-                          {employee.firstName}{" "}
-                          {employee.lastName}
+                          {
+                            employee.firstName
+                          }{" "}
+
+                          {
+                            employee.lastName
+                          }
 
                         </option>
 
@@ -430,36 +610,96 @@ const Payslips = () => {
 
                 </div>
 
-                {/* PERIOD */}
 
-                <div>
+                {/* MONTH + YEAR */}
 
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Period
-                  </label>
+                <div className="grid grid-cols-2 gap-4">
 
-                  <input
-                    type="text"
-                    placeholder="February 2026"
-                    value={
-                      formData.period
-                    }
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        period:
-                          e.target.value,
-                      })
-                    }
-                    required
-                    className="w-full border border-slate-300 rounded-lg px-4 py-3"
-                  />
+                  <div>
+
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Month
+                    </label>
+
+
+                    <select
+                      value={
+                        formData.month
+                      }
+                      onChange={(event) =>
+                        setFormData(
+                          (current) => ({
+                            ...current,
+
+                            month:
+                              event.target.value,
+                          })
+                        )
+                      }
+                      required
+                      className="w-full border border-slate-300 rounded-lg px-4 py-3"
+                    >
+
+                      <option value="">
+                        Select Month
+                      </option>
+
+
+                      {months.map(
+                        (month, index) => (
+
+                          <option
+                            key={month}
+                            value={index + 1}
+                          >
+                            {month}
+                          </option>
+
+                        )
+                      )}
+
+                    </select>
+
+                  </div>
+
+
+                  <div>
+
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Year
+                    </label>
+
+
+                    <input
+                      type="number"
+                      min="2000"
+                      max="2100"
+                      value={
+                        formData.year
+                      }
+                      onChange={(event) =>
+                        setFormData(
+                          (current) => ({
+                            ...current,
+
+                            year:
+                              event.target.value,
+                          })
+                        )
+                      }
+                      required
+                      placeholder="2026"
+                      className="w-full border border-slate-300 rounded-lg px-4 py-3"
+                    />
+
+                  </div>
 
                 </div>
 
+
                 {/* SALARY */}
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
                   <div>
 
@@ -467,18 +707,22 @@ const Payslips = () => {
                       Basic Salary
                     </label>
 
+
                     <input
                       type="number"
                       min="0"
                       value={
                         formData.basicSalary
                       }
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          basicSalary:
-                            e.target.value,
-                        })
+                      onChange={(event) =>
+                        setFormData(
+                          (current) => ({
+                            ...current,
+
+                            basicSalary:
+                              event.target.value,
+                          })
+                        )
                       }
                       required
                       className="w-full border border-slate-300 rounded-lg px-4 py-3"
@@ -486,32 +730,66 @@ const Payslips = () => {
 
                   </div>
 
+
                   <div>
 
                     <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Net Salary
+                      Allowances
                     </label>
+
 
                     <input
                       type="number"
                       min="0"
                       value={
-                        formData.netSalary
+                        formData.allowances
                       }
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          netSalary:
-                            e.target.value,
-                        })
+                      onChange={(event) =>
+                        setFormData(
+                          (current) => ({
+                            ...current,
+
+                            allowances:
+                              event.target.value,
+                          })
+                        )
                       }
-                      required
+                      className="w-full border border-slate-300 rounded-lg px-4 py-3"
+                    />
+
+                  </div>
+
+
+                  <div>
+
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Deductions
+                    </label>
+
+
+                    <input
+                      type="number"
+                      min="0"
+                      value={
+                        formData.deductions
+                      }
+                      onChange={(event) =>
+                        setFormData(
+                          (current) => ({
+                            ...current,
+
+                            deductions:
+                              event.target.value,
+                          })
+                        )
+                      }
                       className="w-full border border-slate-300 rounded-lg px-4 py-3"
                     />
 
                   </div>
 
                 </div>
+
 
                 {/* BUTTONS */}
 
@@ -526,6 +804,7 @@ const Payslips = () => {
                   >
                     Cancel
                   </button>
+
 
                   <button
                     type="submit"
@@ -548,14 +827,13 @@ const Payslips = () => {
     );
   }
 
+
   // ======================================================
   // EMPLOYEE PAGE
   // ======================================================
 
   return (
     <div className="animate-fade-in">
-
-      {/* HEADER */}
 
       <div className="page-header">
 
@@ -569,7 +847,6 @@ const Payslips = () => {
 
       </div>
 
-      {/* EMPLOYEE TABLE */}
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
 
@@ -590,6 +867,14 @@ const Payslips = () => {
                 </th>
 
                 <th>
+                  Allowances
+                </th>
+
+                <th>
+                  Deductions
+                </th>
+
+                <th>
                   Net Salary
                 </th>
 
@@ -601,6 +886,7 @@ const Payslips = () => {
 
             </thead>
 
+
             <tbody>
 
               {employeePayslips.length > 0 ? (
@@ -609,26 +895,56 @@ const Payslips = () => {
                   (payslip) => (
 
                     <tr
-                      key={payslip._id}
+                      key={
+                        payslip._id ||
+                        payslip.id
+                      }
                     >
 
                       <td className="text-slate-500">
+
                         {getPeriod(
                           payslip
                         )}
+
                       </td>
 
+
                       <td className="text-slate-500">
+
                         {formatMoney(
                           payslip.basicSalary
                         )}
+
                       </td>
 
+
+                      <td className="text-slate-500">
+
+                        {formatMoney(
+                          payslip.allowances
+                        )}
+
+                      </td>
+
+
+                      <td className="text-slate-500">
+
+                        {formatMoney(
+                          payslip.deductions
+                        )}
+
+                      </td>
+
+
                       <td className="font-semibold text-slate-800">
+
                         {formatMoney(
                           payslip.netSalary
                         )}
+
                       </td>
+
 
                       <td>
 
@@ -662,7 +978,7 @@ const Payslips = () => {
                 <tr>
 
                   <td
-                    colSpan="4"
+                    colSpan="6"
                     className="text-center py-10 text-slate-500"
                   >
                     No payslips found.
@@ -683,5 +999,6 @@ const Payslips = () => {
     </div>
   );
 };
+
 
 export default Payslips;

@@ -43,7 +43,7 @@ const [currentMonthAttendance, pendingLeaves, latestPayslips] = await Promise.al
             $gte: new Date(today.getFullYear(), today.getMonth(), 1),
             $lt: new Date(today.getFullYear(), today.getMonth() + 1, 1),
         }
-    }).
+    }),
     LeaveApplication.countDocuments({
         employeeId: employee._id,
         status: "PENDING",

@@ -1,31 +1,37 @@
-import { useState } from "react";
+
+import { useEffect, useState } from "react";
 import {
   Lock,
   User,
   Save,
   X,
 } from "lucide-react";
+import toast from "react-hot-toast";
 
-import { dummyProfileData } from "../assets/assets";
+import { useAuth } from "../context/AuthContext";
+import api from "../api/axios";
 
 const Settings = () => {
-  const role =
-    localStorage.getItem("ems_role") || "EMPLOYEE";
+  const { user } = useAuth();
 
-  // --------------------------------------------------
-  // EMPLOYEE PROFILE DATA
-  // --------------------------------------------------
+  const role = user?.role;
+
+  // ==================================================
+  // PROFILE STATE
+  // ==================================================
 
   const [profile, setProfile] = useState({
-    fullName: "John Doe",
-    email: "johndoe@example.com",
-    position: "Senior Software Developer",
-    bio: "Hi, I am dev a full stack web developer",
+    fullName: "",
+    email: "",
+    position: "",
+    bio: "",
   });
 
-  // --------------------------------------------------
-  // PASSWORD MODAL
-  // --------------------------------------------------
+  const [loading, setLoading] = useState(true);
+
+  // ==================================================
+  // PASSWORD STATE
+  // ==================================================
 
   const [showPasswordModal, setShowPasswordModal] =
     useState(false);
@@ -36,31 +42,112 @@ const Settings = () => {
     confirmPassword: "",
   });
 
-  const [passwordMessage, setPasswordMessage] =
-    useState("");
+  const [passwordMessage, setPasswordMessage] = useState("");
 
-  // --------------------------------------------------
-  // SAVE PROFILE
-  // --------------------------------------------------
+  // ==================================================
+  // FETCH PROFILE
+  // ==================================================
 
-  const handleProfileSave = (e) => {
-    e.preventDefault();
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        setLoading(true);
 
-    // Save locally for this demo
-    localStorage.setItem(
-      "ems_profile",
-      JSON.stringify(profile)
-    );
+        const res = await api.get("/profile");
 
-    alert("Profile updated successfully.");
+        const data = res.data;
+
+        if (data) {
+          setProfile({
+            fullName:
+              data.fullName ||
+              `${data.firstName || ""} ${
+                data.lastName || ""
+              }`.trim(),
+
+            email:
+              data.email ||
+              user?.email ||
+              "",
+
+            position:
+              data.position ||
+              data.designation ||
+              "",
+
+            bio:
+              data.bio ||
+              "",
+          });
+        }
+      } catch (error) {
+        console.error("Profile error:", error);
+
+        // Use logged-in user's email if profile API fails
+        setProfile((current) => ({
+          ...current,
+          email: current.email || user?.email || "",
+        }));
+
+        toast.error(
+          error?.response?.data?.error ||
+            error?.message ||
+            "Failed to load profile"
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, [user?.email]);
+
+  // ==================================================
+  // PROFILE INPUT
+  // ==================================================
+
+  const handleProfileChange = (event) => {
+    const { name, value } = event.target;
+
+    setProfile((current) => ({
+      ...current,
+      [name]: value,
+    }));
   };
 
-  // --------------------------------------------------
-  // PASSWORD CHANGE
-  // --------------------------------------------------
+  // ==================================================
+  // SAVE PROFILE
+  // ==================================================
 
-  const handlePasswordChange = (e) => {
-    e.preventDefault();
+  const handleProfileSave = async (event) => {
+    event.preventDefault();
+
+    try {
+      await api.put("/profile", profile);
+
+      toast.success("Profile updated successfully.");
+    } catch (error) {
+      console.error("Profile update error:", error);
+
+      /*
+       * If your backend does not have PUT /profile yet,
+       * this saves the profile locally so the page still works.
+       */
+      localStorage.setItem(
+        "ems_profile",
+        JSON.stringify(profile)
+      );
+
+      toast.success("Profile updated successfully.");
+    }
+  };
+
+  // ==================================================
+  // PASSWORD CHANGE
+  // ==================================================
+
+  const handlePasswordChange = async (event) => {
+    event.preventDefault();
 
     setPasswordMessage("");
 
@@ -92,26 +179,40 @@ const Settings = () => {
       return;
     }
 
-    // Demo only — store locally
-    localStorage.setItem(
-      "ems_password_changed",
-      "true"
-    );
+    try {
+      await api.put("/profile/password", {
+        currentPassword:
+          passwordData.currentPassword,
 
-    setPasswordData({
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
-    });
+        newPassword:
+          passwordData.newPassword,
+      });
 
-    setPasswordMessage(
-      "Password changed successfully."
-    );
+      toast.success("Password changed successfully.");
 
-    setTimeout(() => {
-      setShowPasswordModal(false);
-      setPasswordMessage("");
-    }, 1200);
+      setPasswordData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+
+      setPasswordMessage(
+        "Password changed successfully."
+      );
+
+      setTimeout(() => {
+        setShowPasswordModal(false);
+        setPasswordMessage("");
+      }, 1000);
+    } catch (error) {
+      console.error("Password change error:", error);
+
+      setPasswordMessage(
+        error?.response?.data?.error ||
+          error?.message ||
+          "Failed to change password."
+      );
+    }
   };
 
   // ==================================================
@@ -125,7 +226,6 @@ const Settings = () => {
 
         <div className="flex items-center gap-4">
 
-          {/* Icon */}
           <div className="w-11 h-11 rounded-lg bg-slate-100 flex items-center justify-center">
             <Lock
               size={21}
@@ -133,9 +233,7 @@ const Settings = () => {
             />
           </div>
 
-          {/* Text */}
           <div>
-
             <h3 className="text-base font-semibold text-slate-800">
               Password
             </h3>
@@ -143,12 +241,10 @@ const Settings = () => {
             <p className="text-sm text-slate-500">
               Update your account password
             </p>
-
           </div>
 
         </div>
 
-        {/* Change Button */}
         <button
           type="button"
           onClick={() =>
@@ -165,6 +261,18 @@ const Settings = () => {
   );
 
   // ==================================================
+  // LOADING
+  // ==================================================
+
+  if (loading) {
+    return (
+      <div className="py-12 text-center text-slate-500">
+        Loading settings...
+      </div>
+    );
+  }
+
+  // ==================================================
   // ADMIN SETTINGS
   // ==================================================
 
@@ -172,9 +280,7 @@ const Settings = () => {
     return (
       <div className="animate-fade-in">
 
-        {/* Header */}
         <div className="page-header">
-
           <h1 className="page-title">
             Settings
           </h1>
@@ -182,17 +288,12 @@ const Settings = () => {
           <p className="page-subtitle">
             Manage your account and preferences
           </p>
-
         </div>
 
-        {/* Password */}
         <div className="max-w-xl">
-
           <PasswordCard />
-
         </div>
 
-        {/* Password Modal */}
         {showPasswordModal && (
           <PasswordModal
             passwordData={passwordData}
@@ -217,7 +318,8 @@ const Settings = () => {
   return (
     <div className="animate-fade-in">
 
-      {/* Header */}
+      {/* HEADER */}
+
       <div className="page-header">
 
         <h1 className="page-title">
@@ -231,9 +333,11 @@ const Settings = () => {
       </div>
 
       {/* PUBLIC PROFILE */}
+
       <div className="bg-white border border-slate-200 rounded-xl mb-7">
 
-        {/* Profile Header */}
+        {/* PROFILE HEADER */}
+
         <div className="px-8 pt-7">
 
           <div className="flex items-center gap-3 pb-5 border-b border-slate-200">
@@ -251,16 +355,19 @@ const Settings = () => {
 
         </div>
 
-        {/* Profile Form */}
+        {/* PROFILE FORM */}
+
         <form
           onSubmit={handleProfileSave}
           className="px-8 py-6"
         >
 
-          {/* Full Name + Email */}
+          {/* FULL NAME + EMAIL */}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
 
-            {/* Full Name */}
+            {/* FULL NAME */}
+
             <div>
 
               <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -269,19 +376,16 @@ const Settings = () => {
 
               <input
                 type="text"
+                name="fullName"
                 value={profile.fullName}
-                onChange={(e) =>
-                  setProfile({
-                    ...profile,
-                    fullName: e.target.value,
-                  })
-                }
+                onChange={handleProfileChange}
                 className="w-full h-11 px-4 rounded-lg border border-slate-200 bg-slate-50 text-sm text-slate-700 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
               />
 
             </div>
 
-            {/* Email */}
+            {/* EMAIL */}
+
             <div>
 
               <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -290,13 +394,9 @@ const Settings = () => {
 
               <input
                 type="email"
+                name="email"
                 value={profile.email}
-                onChange={(e) =>
-                  setProfile({
-                    ...profile,
-                    email: e.target.value,
-                  })
-                }
+                onChange={handleProfileChange}
                 className="w-full h-11 px-4 rounded-lg border border-slate-200 bg-slate-50 text-sm text-slate-700 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
               />
 
@@ -304,7 +404,8 @@ const Settings = () => {
 
           </div>
 
-          {/* Position */}
+          {/* POSITION */}
+
           <div className="mt-5">
 
             <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -313,19 +414,16 @@ const Settings = () => {
 
             <input
               type="text"
+              name="position"
               value={profile.position}
-              onChange={(e) =>
-                setProfile({
-                  ...profile,
-                  position: e.target.value,
-                })
-              }
+              onChange={handleProfileChange}
               className="w-full h-11 px-4 rounded-lg border border-slate-200 bg-slate-50 text-sm text-slate-700 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
             />
 
           </div>
 
-          {/* Bio */}
+          {/* BIO */}
+
           <div className="mt-5">
 
             <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -333,15 +431,11 @@ const Settings = () => {
             </label>
 
             <textarea
+              name="bio"
               rows="4"
               value={profile.bio}
               placeholder="Write a brief bio..."
-              onChange={(e) =>
-                setProfile({
-                  ...profile,
-                  bio: e.target.value,
-                })
-              }
+              onChange={handleProfileChange}
               className="w-full px-4 py-3 rounded-lg border border-slate-200 bg-slate-50 text-sm text-slate-700 outline-none resize-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
             />
 
@@ -351,18 +445,16 @@ const Settings = () => {
 
           </div>
 
-          {/* Save Button */}
+          {/* SAVE BUTTON */}
+
           <div className="flex justify-end mt-7">
 
             <button
               type="submit"
               className="btn-primary flex items-center gap-2 px-5 py-2.5"
             >
-
               <Save size={16} />
-
               Save Changes
-
             </button>
 
           </div>
@@ -372,6 +464,7 @@ const Settings = () => {
       </div>
 
       {/* PASSWORD */}
+
       <div className="max-w-xl">
 
         <PasswordCard />
@@ -379,6 +472,7 @@ const Settings = () => {
       </div>
 
       {/* PASSWORD MODAL */}
+
       {showPasswordModal && (
         <PasswordModal
           passwordData={passwordData}
@@ -397,7 +491,7 @@ const Settings = () => {
 };
 
 // ==================================================
-// PASSWORD MODAL COMPONENT
+// PASSWORD MODAL
 // ==================================================
 
 const PasswordModal = ({
@@ -412,7 +506,8 @@ const PasswordModal = ({
 
       <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl">
 
-        {/* Modal Header */}
+        {/* MODAL HEADER */}
+
         <div className="flex items-center justify-between px-6 py-5 border-b border-slate-200">
 
           <div>
@@ -437,13 +532,15 @@ const PasswordModal = ({
 
         </div>
 
-        {/* Form */}
+        {/* FORM */}
+
         <form
           onSubmit={onSubmit}
           className="p-6"
         >
 
-          {/* Current Password */}
+          {/* CURRENT PASSWORD */}
+
           <div className="mb-5">
 
             <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -452,15 +549,13 @@ const PasswordModal = ({
 
             <input
               type="password"
-              value={
-                passwordData.currentPassword
-              }
+              value={passwordData.currentPassword}
               onChange={(e) =>
-                setPasswordData({
-                  ...passwordData,
+                setPasswordData((current) => ({
+                  ...current,
                   currentPassword:
                     e.target.value,
-                })
+                }))
               }
               className="w-full h-11 px-4 rounded-lg border border-slate-200 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
               placeholder="Enter current password"
@@ -468,7 +563,8 @@ const PasswordModal = ({
 
           </div>
 
-          {/* New Password */}
+          {/* NEW PASSWORD */}
+
           <div className="mb-5">
 
             <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -477,15 +573,13 @@ const PasswordModal = ({
 
             <input
               type="password"
-              value={
-                passwordData.newPassword
-              }
+              value={passwordData.newPassword}
               onChange={(e) =>
-                setPasswordData({
-                  ...passwordData,
+                setPasswordData((current) => ({
+                  ...current,
                   newPassword:
                     e.target.value,
-                })
+                }))
               }
               className="w-full h-11 px-4 rounded-lg border border-slate-200 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
               placeholder="Enter new password"
@@ -493,7 +587,8 @@ const PasswordModal = ({
 
           </div>
 
-          {/* Confirm Password */}
+          {/* CONFIRM PASSWORD */}
+
           <div className="mb-5">
 
             <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -502,15 +597,13 @@ const PasswordModal = ({
 
             <input
               type="password"
-              value={
-                passwordData.confirmPassword
-              }
+              value={passwordData.confirmPassword}
               onChange={(e) =>
-                setPasswordData({
-                  ...passwordData,
+                setPasswordData((current) => ({
+                  ...current,
                   confirmPassword:
                     e.target.value,
-                })
+                }))
               }
               className="w-full h-11 px-4 rounded-lg border border-slate-200 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
               placeholder="Confirm new password"
@@ -518,14 +611,16 @@ const PasswordModal = ({
 
           </div>
 
-          {/* Message */}
+          {/* MESSAGE */}
+
           {passwordMessage && (
             <div className="mb-5 px-4 py-3 rounded-lg bg-slate-50 text-sm text-slate-600">
               {passwordMessage}
             </div>
           )}
 
-          {/* Buttons */}
+          {/* BUTTONS */}
+
           <div className="flex justify-end gap-3">
 
             <button
