@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   UserIcon,
   XIcon,
@@ -11,9 +11,11 @@ import {
   ReceiptIcon,
   SettingsIcon,
   LogOutIcon,
+  Loader2,
 } from "lucide-react";
 
-import { dummyProfileData } from "../assets/assets";
+import { useAuth } from "../context/AuthContext";
+import api from "../api/axios";
 
 const Sidebar = () => {
   const { pathname } = useLocation();
@@ -21,10 +23,21 @@ const Sidebar = () => {
   const [userName, setUserName] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  const { user, loading, logout } = useAuth();
+
   useEffect(() => {
-    setUserName(
-      dummyProfileData.firstName + " " + dummyProfileData.lastName
-    );
+    api
+      .get("/profile")
+      .then(({ data }) => {
+        if (data.firstName) {
+          setUserName(
+            `${data.firstName} ${data.lastName || ""}`.trim()
+          );
+        }
+      })
+      .catch((error) => {
+        console.error("Failed to load profile:", error);
+      });
   }, []);
 
   // Close sidebar when route changes
@@ -32,51 +45,56 @@ const Sidebar = () => {
     setMobileOpen(false);
   }, [pathname]);
 
-const role =
-  localStorage.getItem("ems_role") ||
-  "EMPLOYEE";
+  const role = user?.role;
 
- const navigationItems = [
-  {
-    name: "Dashboard",
-    path: "/dashboard",
-    icon: LayoutDashboardIcon,
-  },
+  const navigationItems = [
+    {
+      name: "Dashboard",
+      path: "/dashboard",
+      icon: LayoutDashboardIcon,
+    },
 
-  ...(role === "ADMIN"
-    ? [
-        {
-          name: "Employees",
-          path: "/employees",
-          icon: UsersIcon,
-        },
-      ]
-    : []),
+    ...(role === "ADMIN"
+      ? [
+          {
+            name: "Employees",
+            path: "/employees",
+            icon: UsersIcon,
+          },
+        ]
+      : []),
 
-  {
-    name: "Attendance",
-    path: "/attendance",
-    icon: CalendarCheckIcon,
-  },
+    {
+      name: "Attendance",
+      path: "/attendance",
+      icon: CalendarCheckIcon,
+    },
 
-  {
-    name: "Leave",
-    path: "/leave",
-    icon: CalendarDaysIcon,
-  },
+    {
+      name: "Leave",
+      path: "/leave",
+      icon: CalendarDaysIcon,
+    },
 
-  {
-    name: "Payslips",
-    path: "/payslips",
-    icon: ReceiptIcon,
-  },
+    {
+      name: "Payslips",
+      path: "/payslips",
+      icon: ReceiptIcon,
+    },
 
-  {
-    name: "Settings",
-    path: "/settings",
-    icon: SettingsIcon,
-  },
-];
+    {
+      name: "Settings",
+      path: "/settings",
+      icon: SettingsIcon,
+    },
+  ];
+
+  const handleLogout = async () => {
+    await logout();
+    localStorage.removeItem("ems_role");
+    window.location.href = "/login";
+  };
+
   const sidebarContent = (
     <>
       {/* Brand header */}
@@ -100,6 +118,7 @@ const role =
 
           {/* Close button on mobile */}
           <button
+            type="button"
             onClick={() => setMobileOpen(false)}
             className="lg:hidden text-slate-400 hover:text-white p-1"
           >
@@ -140,41 +159,44 @@ const role =
 
       {/* Navigation List */}
       <nav className="px-3 space-y-1">
-        {navigationItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = pathname === item.path;
+        {loading ? (
+          <div className="px-3 py-3 flex items-center gap-2 text-slate-500">
+            <Loader2 className="animate-spin w-4 h-4" />
+            <span className="text-sm">Loading...</span>
+          </div>
+        ) : (
+          navigationItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = pathname === item.path;
 
-          return (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition ${
-                isActive
-                  ? "bg-indigo-600 text-white"
-                  : "text-slate-400 hover:bg-white/5 hover:text-white"
-              }`}
-            >
-              <Icon size={18} />
-              <span>{item.name}</span>
-            </Link>
-          );
-        })}
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition ${
+                  isActive
+                    ? "bg-indigo-600 text-white"
+                    : "text-slate-400 hover:bg-white/5 hover:text-white"
+                }`}
+              >
+                <Icon size={18} />
+                <span>{item.name}</span>
+              </Link>
+            );
+          })
+        )}
       </nav>
 
       {/* Logout */}
       <div className="mt-auto p-3 border-t border-white/10">
-        <Link
-  to="/login"
-  onClick={() => {
-    localStorage.removeItem("ems_role");
-  }}
-          className="flex items-center gap-3 px-3 py-2.5 
-          rounded-lg text-sm text-slate-400 hover:bg-white/5 
-          hover:text-white transition"
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-400 hover:bg-white/5 hover:text-white transition"
         >
           <LogOutIcon size={18} />
           <span>Logout</span>
-        </Link>
+        </button>
       </div>
     </>
   );
@@ -183,6 +205,7 @@ const role =
     <>
       {/* Mobile hamburger button */}
       <button
+        type="button"
         onClick={() => setMobileOpen(true)}
         className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-slate-900 text-white rounded-lg shadow-lg border border-white/10"
       >

@@ -1,32 +1,31 @@
 import { useEffect, useState } from "react";
-import {
-  dummyAdminDashboardData,
-  dummyEmployeeDashboardData
-} from "../assets/assets";
+import toast from "react-hot-toast";
 
 import Loading from "../components/Loading";
 import EmployeeDashboard from "../components/EmployeeDashboard";
 import AdminDashboard from "../components/AdminDashboard";
+import api from "../api/axios";
 
 const Dashboard = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const role =
-    localStorage.getItem("ems_role") ||
-    "EMPLOYEE";
-
-  if (role === "ADMIN") {
-    setData(dummyAdminDashboardData);
-  } else {
-    setData(dummyEmployeeDashboardData);
-  }
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 1000);
-
-    return () => clearTimeout(timer);
+    api
+      .get("/dashboard")
+      .then((res) => {
+        setData(res.data);
+      })
+      .catch((err) => {
+        toast.error(
+          err.response?.data?.error ||
+            err.message ||
+            "Failed to load dashboard"
+        );
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
   if (loading) {

@@ -1,14 +1,7 @@
-import React, { useEffect, useState } from "react";
-import {
-  X,
-  Loader2,
-} from "lucide-react";
+import { useEffect, useState } from "react";
+import { Loader2, X } from "lucide-react";
 
-const EmployeeForm = ({
-  employee = null,
-  onCancel,
-  onSubmit,
-}) => {
+const EmployeeForm = ({ employee = null, onCancel, onSubmit }) => {
   const isEditMode = !!employee;
 
   const [loading, setLoading] = useState(false);
@@ -38,8 +31,10 @@ const EmployeeForm = ({
       setFormData({
         firstName: employee.firstName || "",
         lastName: employee.lastName || "",
-        phoneNumber: employee.phoneNumber || "",
-        joinDate: employee.joinDate || "",
+        phoneNumber: employee.phoneNumber || employee.phone || "",
+        joinDate: employee.joinDate
+          ? new Date(employee.joinDate).toISOString().split("T")[0]
+          : "",
         bio: employee.bio || "",
 
         department: employee.department || "",
@@ -47,18 +42,28 @@ const EmployeeForm = ({
         basicSalary: employee.basicSalary ?? "0",
         allowances: employee.allowances ?? "0",
         deductions: employee.deductions ?? "0",
-        status: employee.status || "Active",
+        status:
+          employee.status ||
+          employee.employmentStatus ||
+          "Active",
 
-        workEmail: employee.workEmail || "",
+        workEmail:
+          employee.workEmail ||
+          employee.email ||
+          employee.user?.email ||
+          "",
+
         password: "",
-        systemRole: employee.systemRole || "Employee",
+
+        systemRole:
+          employee.systemRole ||
+          (employee.user?.role === "ADMIN"
+            ? "Admin"
+            : "Employee"),
       });
     }
   }, [employee]);
 
-  // IMPORTANT:
-  // This function updates only the changed field.
-  // It does NOT recreate the form component.
   const handleChange = (e) => {
     const { name, value } = e.target;
 
@@ -74,11 +79,12 @@ const EmployeeForm = ({
     setLoading(true);
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
+      // Send the form data to the parent component
       if (onSubmit) {
-        onSubmit(formData);
+        await onSubmit(formData);
       }
+    } catch (error) {
+      console.error("Employee form error:", error);
     } finally {
       setLoading(false);
     }
@@ -95,7 +101,6 @@ const EmployeeForm = ({
         w-full max-w-3xl my-8"
         onClick={(e) => e.stopPropagation()}
       >
-
         {/* Header */}
         <div className="flex items-center justify-between p-6 pb-3">
           <div>
@@ -122,20 +127,19 @@ const EmployeeForm = ({
 
         {/* Form */}
         <form onSubmit={handleSubmit}>
-
           <div className="p-6 space-y-6">
 
-            {/* ================= PERSONAL INFORMATION ================= */}
+            {/* PERSONAL INFORMATION */}
             <section className="border border-slate-200 rounded-xl p-5">
-
-              <h3 className="text-sm font-semibold text-slate-800 pb-3
-              border-b border-slate-100">
+              <h3
+                className="text-sm font-semibold text-slate-800 pb-3
+                border-b border-slate-100"
+              >
                 Personal Information
               </h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-5">
 
-                {/* First Name */}
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1.5">
                     First Name
@@ -146,15 +150,13 @@ const EmployeeForm = ({
                     name="firstName"
                     value={formData.firstName}
                     onChange={handleChange}
-                    className="w-full h-10 px-3 text-sm
-                    bg-white border border-slate-200 rounded-lg
-                    outline-none focus:border-indigo-400
-                    focus:ring-2 focus:ring-indigo-100"
+                    className="w-full h-10 px-3 text-sm bg-white
+                    border border-slate-200 rounded-lg outline-none
+                    focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
                     placeholder="First name"
                   />
                 </div>
 
-                {/* Last Name */}
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1.5">
                     Last Name
@@ -165,15 +167,13 @@ const EmployeeForm = ({
                     name="lastName"
                     value={formData.lastName}
                     onChange={handleChange}
-                    className="w-full h-10 px-3 text-sm
-                    bg-white border border-slate-200 rounded-lg
-                    outline-none focus:border-indigo-400
-                    focus:ring-2 focus:ring-indigo-100"
+                    className="w-full h-10 px-3 text-sm bg-white
+                    border border-slate-200 rounded-lg outline-none
+                    focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
                     placeholder="Last name"
                   />
                 </div>
 
-                {/* Phone */}
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1.5">
                     Phone Number
@@ -184,15 +184,13 @@ const EmployeeForm = ({
                     name="phoneNumber"
                     value={formData.phoneNumber}
                     onChange={handleChange}
-                    className="w-full h-10 px-3 text-sm
-                    bg-white border border-slate-200 rounded-lg
-                    outline-none focus:border-indigo-400
-                    focus:ring-2 focus:ring-indigo-100"
+                    className="w-full h-10 px-3 text-sm bg-white
+                    border border-slate-200 rounded-lg outline-none
+                    focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
                     placeholder="Phone number"
                   />
                 </div>
 
-                {/* Join Date */}
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1.5">
                     Join Date
@@ -203,14 +201,12 @@ const EmployeeForm = ({
                     name="joinDate"
                     value={formData.joinDate}
                     onChange={handleChange}
-                    className="w-full h-10 px-3 text-sm
-                    bg-white border border-slate-200 rounded-lg
-                    outline-none focus:border-indigo-400
-                    focus:ring-2 focus:ring-indigo-100"
+                    className="w-full h-10 px-3 text-sm bg-white
+                    border border-slate-200 rounded-lg outline-none
+                    focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
                   />
                 </div>
 
-                {/* Bio */}
                 <div className="sm:col-span-2">
                   <label className="block text-xs font-medium text-slate-600 mb-1.5">
                     Bio (Optional)
@@ -221,11 +217,9 @@ const EmployeeForm = ({
                     value={formData.bio}
                     onChange={handleChange}
                     rows="3"
-                    className="w-full px-3 py-2 text-sm
-                    bg-white border border-slate-200 rounded-lg
-                    outline-none resize-none
-                    focus:border-indigo-400
-                    focus:ring-2 focus:ring-indigo-100"
+                    className="w-full px-3 py-2 text-sm bg-white
+                    border border-slate-200 rounded-lg outline-none resize-none
+                    focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
                     placeholder="Brief description..."
                   />
                 </div>
@@ -233,18 +227,17 @@ const EmployeeForm = ({
               </div>
             </section>
 
-
-            {/* ================= EMPLOYMENT DETAILS ================= */}
+            {/* EMPLOYMENT DETAILS */}
             <section className="border border-slate-200 rounded-xl p-5">
-
-              <h3 className="text-sm font-semibold text-slate-800 pb-3
-              border-b border-slate-100">
+              <h3
+                className="text-sm font-semibold text-slate-800 pb-3
+                border-b border-slate-100"
+              >
                 Employment Details
               </h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-5">
 
-                {/* Department */}
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1.5">
                     Department
@@ -254,10 +247,9 @@ const EmployeeForm = ({
                     name="department"
                     value={formData.department}
                     onChange={handleChange}
-                    className="w-full h-10 px-3 text-sm
-                    bg-white border border-slate-200 rounded-lg
-                    outline-none focus:border-indigo-400
-                    focus:ring-2 focus:ring-indigo-100"
+                    className="w-full h-10 px-3 text-sm bg-white
+                    border border-slate-200 rounded-lg outline-none
+                    focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
                   >
                     <option value="">Select Department</option>
                     <option value="IT Support">IT Support</option>
@@ -268,7 +260,6 @@ const EmployeeForm = ({
                   </select>
                 </div>
 
-                {/* Position */}
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1.5">
                     Position
@@ -279,15 +270,13 @@ const EmployeeForm = ({
                     name="position"
                     value={formData.position}
                     onChange={handleChange}
-                    className="w-full h-10 px-3 text-sm
-                    bg-white border border-slate-200 rounded-lg
-                    outline-none focus:border-indigo-400
-                    focus:ring-2 focus:ring-indigo-100"
+                    className="w-full h-10 px-3 text-sm bg-white
+                    border border-slate-200 rounded-lg outline-none
+                    focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
                     placeholder="Software Developer"
                   />
                 </div>
 
-                {/* Salary */}
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1.5">
                     Basic Salary
@@ -298,14 +287,12 @@ const EmployeeForm = ({
                     name="basicSalary"
                     value={formData.basicSalary}
                     onChange={handleChange}
-                    className="w-full h-10 px-3 text-sm
-                    bg-white border border-slate-200 rounded-lg
-                    outline-none focus:border-indigo-400
-                    focus:ring-2 focus:ring-indigo-100"
+                    className="w-full h-10 px-3 text-sm bg-white
+                    border border-slate-200 rounded-lg outline-none
+                    focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
                   />
                 </div>
 
-                {/* Allowances */}
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1.5">
                     Allowances
@@ -316,14 +303,12 @@ const EmployeeForm = ({
                     name="allowances"
                     value={formData.allowances}
                     onChange={handleChange}
-                    className="w-full h-10 px-3 text-sm
-                    bg-white border border-slate-200 rounded-lg
-                    outline-none focus:border-indigo-400
-                    focus:ring-2 focus:ring-indigo-100"
+                    className="w-full h-10 px-3 text-sm bg-white
+                    border border-slate-200 rounded-lg outline-none
+                    focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
                   />
                 </div>
 
-                {/* Deductions */}
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1.5">
                     Deductions
@@ -334,14 +319,12 @@ const EmployeeForm = ({
                     name="deductions"
                     value={formData.deductions}
                     onChange={handleChange}
-                    className="w-full h-10 px-3 text-sm
-                    bg-white border border-slate-200 rounded-lg
-                    outline-none focus:border-indigo-400
-                    focus:ring-2 focus:ring-indigo-100"
+                    className="w-full h-10 px-3 text-sm bg-white
+                    border border-slate-200 rounded-lg outline-none
+                    focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
                   />
                 </div>
 
-                {/* Status */}
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1.5">
                     Status
@@ -351,10 +334,9 @@ const EmployeeForm = ({
                     name="status"
                     value={formData.status}
                     onChange={handleChange}
-                    className="w-full h-10 px-3 text-sm
-                    bg-white border border-slate-200 rounded-lg
-                    outline-none focus:border-indigo-400
-                    focus:ring-2 focus:ring-indigo-100"
+                    className="w-full h-10 px-3 text-sm bg-white
+                    border border-slate-200 rounded-lg outline-none
+                    focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
                   >
                     <option value="Active">Active</option>
                     <option value="Inactive">Inactive</option>
@@ -364,18 +346,17 @@ const EmployeeForm = ({
               </div>
             </section>
 
-
-            {/* ================= ACCOUNT SETUP ================= */}
+            {/* ACCOUNT SETUP */}
             <section className="border border-slate-200 rounded-xl p-5">
-
-              <h3 className="text-sm font-semibold text-slate-800 pb-3
-              border-b border-slate-100">
+              <h3
+                className="text-sm font-semibold text-slate-800 pb-3
+                border-b border-slate-100"
+              >
                 Account Setup
               </h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-5">
 
-                {/* Email */}
                 <div className="sm:col-span-2">
                   <label className="block text-xs font-medium text-slate-600 mb-1.5">
                     Work Email
@@ -386,15 +367,13 @@ const EmployeeForm = ({
                     name="workEmail"
                     value={formData.workEmail}
                     onChange={handleChange}
-                    className="w-full h-10 px-3 text-sm
-                    bg-white border border-slate-200 rounded-lg
-                    outline-none focus:border-indigo-400
-                    focus:ring-2 focus:ring-indigo-100"
+                    className="w-full h-10 px-3 text-sm bg-white
+                    border border-slate-200 rounded-lg outline-none
+                    focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
                     placeholder="employee@example.com"
                   />
                 </div>
 
-                {/* Password */}
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1.5">
                     Temporary Password
@@ -405,15 +384,13 @@ const EmployeeForm = ({
                     name="password"
                     value={formData.password}
                     onChange={handleChange}
-                    className="w-full h-10 px-3 text-sm
-                    bg-white border border-slate-200 rounded-lg
-                    outline-none focus:border-indigo-400
-                    focus:ring-2 focus:ring-indigo-100"
+                    className="w-full h-10 px-3 text-sm bg-white
+                    border border-slate-200 rounded-lg outline-none
+                    focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
                     placeholder="Temporary password"
                   />
                 </div>
 
-                {/* System Role */}
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1.5">
                     System Role
@@ -423,10 +400,9 @@ const EmployeeForm = ({
                     name="systemRole"
                     value={formData.systemRole}
                     onChange={handleChange}
-                    className="w-full h-10 px-3 text-sm
-                    bg-white border border-slate-200 rounded-lg
-                    outline-none focus:border-indigo-400
-                    focus:ring-2 focus:ring-indigo-100"
+                    className="w-full h-10 px-3 text-sm bg-white
+                    border border-slate-200 rounded-lg outline-none
+                    focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
                   >
                     <option value="Employee">Employee</option>
                     <option value="Admin">Admin</option>
@@ -435,14 +411,13 @@ const EmployeeForm = ({
 
               </div>
             </section>
-
           </div>
 
-
-          {/* ================= BUTTONS ================= */}
-          <div className="flex flex-col-reverse sm:flex-row
-          justify-end gap-3 px-6 pb-6 pt-2">
-
+          {/* BUTTONS */}
+          <div
+            className="flex flex-col-reverse sm:flex-row
+            justify-end gap-3 px-6 pb-6 pt-2"
+          >
             <button
               type="button"
               className="btn-secondary"
@@ -464,9 +439,7 @@ const EmployeeForm = ({
                 ? "Update Employee"
                 : "Create Employee"}
             </button>
-
           </div>
-
         </form>
       </div>
     </div>
